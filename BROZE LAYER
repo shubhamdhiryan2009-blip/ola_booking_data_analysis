@@ -1,0 +1,37 @@
+IF OBJECT_ID('Ola_Ride_Bookings','U') IS NOT NULL
+DROP TABLE Ola_Ride_Bookings
+
+CREATE TABLE Ola_Ride_Bookings(
+Date_                               NVARCHAR(50),
+Time_                               NVARCHAR(50),
+Booking_ID                          NVARCHAR(50),
+Booking_Status                      NVARCHAR(50),
+Customer_ID                         NVARCHAR(50),
+Vehicle_Type                        NVARCHAR(50),
+Pickup_Location                     NVARCHAR(100),
+Drop_Location                       NVARCHAR(100),
+Avg_VTAT                            NVARCHAR(50)  NULL,
+Avg_CTAT                            NVARCHAR(50)  NULL,
+Cancelled_by_Customer               NVARCHAR(50)  NULL,
+Reason_for_cancelling_by_Customer   NVARCHAR(100) NULL,
+Cancelled_by_Driver                 NVARCHAR(50)  NULL,
+Driver_Cancellation_Reason          NVARCHAR(100) NULL,
+Incomplete_Ride                     NVARCHAR(50)  NULL,
+Incomplete_Rides_Reason             NVARCHAR(100) NULL,
+Booking_Value                       NVARCHAR(50)  NULL,
+Ride_Distance                       NVARCHAR(50)  NULL,
+Driver_Ratings						NVARCHAR(50)  NULL,
+Customer_Rating                     NVARCHAR(50)  NULL,
+Payment_Method                      NVARCHAR(50)  NULL
+)
+GO
+truncate table Ola_Ride_Bookings
+GO
+bulk insert Ola_Ride_Bookings
+from 'C:\data analyst projects 10 days challange\ola booking dataset\rideBookings.csv'
+with(
+    FIRSTROW = 2,                 
+    FIELDTERMINATOR = ',',        
+    ROWTERMINATOR = '\n',        
+    TABLOCK                        
+);
