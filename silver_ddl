@@ -1,0 +1,28 @@
+if object_ID('silver_ola_ride_booking','U') is not null
+drop table silver_ola_ride_booking
+
+go 
+
+create table silver_ola_ride_booking(
+date date,
+time time,
+Booking_ID varchar(50) primary key,
+Booking_Status varchar(50),
+Customer_ID varchar(50),
+Vehicle_Type varchar(50),
+Pickup_Location varchar(50),
+Drop_Location varchar(50),
+Avg_VTAT decimal(10,2),
+Avg_CTAT decimal(10,2),
+Cancelled_by_Customer bit,
+Reason_for_cancelling_by_Customer varchar(50),
+Cancelled_by_Driver bit,
+Driver_Cancellation_Reason varchar(50),
+Incomplete_Ride bit,
+Incomplete_Rides_Reason varchar(50),
+Booking_Value int,
+Ride_Distance decimal(10,2),
+Driver_Ratings decimal(10,2),
+Customer_Rating decimal(10,2),
+Payment_Method varchar(50)
+);
