@@ -1,0 +1,103 @@
+
+truncate table silver_ola_ride_booking
+
+go
+
+with cts_unique_booking as(
+select *
+from(
+select *, row_number() over(partition by Booking_ID order by Date_, Time_) as rank_num
+from Ola_Ride_Bookings
+)t
+where rank_num = 1
+)
+
+insert into silver_ola_ride_booking
+(
+date, 
+time, 
+Booking_ID, 
+Booking_Status, 
+Customer_ID, 
+Vehicle_Type, 
+Pickup_Location, 
+Drop_Location, 
+Avg_VTAT, 
+Avg_CTAT, 
+Cancelled_by_Customer, 
+Reason_for_cancelling_by_Customer, 
+Cancelled_by_Driver, 
+Driver_Cancellation_Reason, 
+Incomplete_Ride, 
+Incomplete_Rides_Reason, 
+Booking_Value, 
+Ride_Distance, 
+Driver_Ratings, 
+Customer_Rating, 
+Payment_Method
+)
+select 
+convert(date ,Date_, 105) as date,
+convert(time ,time_, 108) as time,
+Booking_ID,
+Booking_Status,
+Customer_ID,
+Vehicle_Type,
+Pickup_Location,
+Drop_Location,
+case 
+when Avg_VTAT = 'null' then null
+else cast(Avg_VTAT as decimal(10,2))
+end as Avg_VTAT,
+case 
+when Avg_CTAT = 'null' then null
+else cast(Avg_CTAT as decimal(10,2))
+end as Avg_CTAT,
+CASE 
+        WHEN try_cast(Cancelled_by_Customer as int) = 1 THEN CAST(1 AS BIT)
+        WHEN Cancelled_by_Customer = 'null' THEN NULL 
+        ELSE CAST(0 AS BIT)
+    END AS Cancelled_by_Customer,
+case 
+when Reason_for_cancelling_by_Customer = 'null' then 'N/A'
+else Reason_for_cancelling_by_Customer
+end  Reason_for_cancelling_by_Customer,
+CASE 
+        WHEN try_cast(Cancelled_by_Driver as int) = 1 THEN CAST(1 AS BIT)
+        WHEN Cancelled_by_Driver = 'null' THEN NULL
+        ELSE CAST(0 AS BIT)
+    END AS Cancelled_by_Driver,
+case 
+when Driver_Cancellation_Reason = 'null' then 'N/A'
+else Driver_Cancellation_Reason
+end Driver_Cancellation_Reason,
+CASE 
+        WHEN try_cast(Incomplete_Ride as int) = 1 THEN CAST(1 AS BIT)
+        WHEN Incomplete_Ride = 'null' THEN NULL
+        ELSE CAST(0 AS BIT)
+    END AS Incomplete_Ride,
+case 
+when Incomplete_Rides_Reason = 'null' then 'N/A'
+else Incomplete_Rides_Reason
+end Incomplete_Rides_Reason,
+case 
+when Booking_Value = 'null' then null
+else cast(Booking_Value as decimal(10,2))
+end as Booking_Value,
+case 
+when Ride_Distance = 'null' then null
+else cast(Ride_Distance as decimal(10,2))
+end as Ride_Distance,
+case 
+when Driver_Ratings = 'null' then null
+else cast(Driver_Ratings as decimal(10,2))
+end as Driver_Ratings,
+case
+when Customer_Rating = 'null' then null
+else cast(Customer_Rating as decimal(10,2))
+end as Customer_Rating,
+case
+when Payment_Method = 'null' then 'N/A'
+else Payment_Method
+end as Payment_Method
+from cts_unique_booking
