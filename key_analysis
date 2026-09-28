@@ -1,0 +1,122 @@
+--- Key facts from the data 
+---Booking Value, Ride Distance, ratings are null whenever a ride isn't completed
+select 
+Booking_Status,
+count(*) as total_frequency,
+sum(Booking_value) as total_booking_value
+from silver_ola_ride_booking
+group by Booking_Status
+order by count(*) desc
+
+select 
+Vehicle_Type,
+count(*) as total_frequency,
+sum(Booking_value) as total_booking_value
+from silver_ola_ride_booking
+group by Vehicle_Type
+order by count(*) desc
+
+--- higest cancelletion on vehile type 
+select
+Vehicle_Type,
+count(*) as total_cancelletion
+from silver_ola_ride_booking
+where Booking_Status = 'No Driver Found' or Booking_Status = 'Cancelled by Driver'
+group by  Vehicle_Type
+order by count(*) desc
+
+
+
+---Completion / cancellation funnel
+select 
+Booking_Status,
+count(*) as Bookings,
+cast((count(*) * 100.00) / sum(count(*)) over() as decimal(10,2)) as pct_of_total
+from silver_ola_ride_booking
+group by Booking_Status
+
+
+-- 2. Revenue & completion rate by vehicle type
+select 
+Vehicle_Type, 
+count(*) as total_bookings, 
+sum(case when Booking_Status = 'Completed' then 1 else 0 end) as Completed,
+cast(sum(case when Booking_Status = 'Completed' then 1 else 0 end) * 100.00/count(*) as decimal(10,2)) as completion_rate_pct,
+sum(Booking_Value) as Total_Revenue,
+avg(Booking_Value) as Avg_booking_value,
+avg(Booking_Value) / NULLIF(SUM(Ride_Distance), 0)  as avg_revenue_per_km
+from silver_ola_ride_booking
+group by Vehicle_Type
+
+-- 3. Top cancellation reasons, customer vs driver
+SELECT 'Customer' AS Cancelled_By, Reason_for_cancelling_by_Customer AS Reason, COUNT(*) AS Cnt
+FROM silver_ola_ride_booking WHERE Cancelled_by_Customer = 1
+GROUP BY Reason_for_cancelling_by_Customer
+UNION ALL
+SELECT 'Driver', Driver_Cancellation_Reason, COUNT(*)
+FROM silver_ola_ride_booking WHERE Cancelled_by_Driver = 1
+GROUP BY Driver_Cancellation_Reason
+ORDER BY Cnt DESC;
+
+-- 4. Monthly trend: bookings, revenue, completion rate
+select
+format(date, 'yyyy-MM') as month,
+count(*) as bookings,
+sum(case when Booking_Status = 'Completed' then Booking_Value else 0 end) as revenue,
+cast(sum(case when Booking_Status = 'Completed' then 1 else 0 end)*100.00/count(*) as decimal(10,2)) as completion_rate_pct
+from silver_ola_ride_booking
+group by format(date, 'yyyy-MM') 
+order by month
+
+
+-- 5. Locations with worst cancellation rate (min 100 bookings, to avoid noise)
+select 
+Pickup_Location,
+count(*) as total_bookings,
+sum(case when Booking_Status like 'Cancelled%' or Booking_Status = 'No Driver Found' then 1 else 0 end) as failed_bookings,
+cast(sum(case when Booking_Status like 'Cancelled%' or Booking_Status='No Driver Found' then 1 else 0 end) * 100.00/count(*) as decimal(5,2)) as failure_rate_pct
+from silver_ola_ride_booking
+group by Pickup_Location
+having count(*) >= 100
+order by failure_rate_pct desc
+
+
+-- 6. VTAT vs cancellation relationship
+select 
+case 
+    when Avg_VTAT < 5 then '<5 min'
+    when Avg_VTAT < 10 then '5-10 min'
+    when Avg_VTAT < 15 then '10-15 min'
+    else '15+ min'
+end as VTAT_Bucket,
+    count(*) as bookings,
+    sum(case when booking_status like 'Cancelled%' then 1 else 0 end) as cancellations,
+    cast(sum(case when Booking_Status like 'Cancelled%' then 1 else 0 end)*100.0/count(*) as decimal(5,2)) as Cancelled_rate_pct
+from silver_ola_ride_booking
+WHERE Avg_VTAT IS NOT NULL
+GROUP BY CASE
+            WHEN Avg_VTAT < 5 THEN '<5 min'
+            WHEN Avg_VTAT < 10 THEN '5-10 min'
+            WHEN Avg_VTAT < 15 THEN '10-15 min'
+            ELSE '15+ min'
+         END
+ORDER BY VTAT_Bucket;
+
+-- 7. Repeat customer share of revenue
+with customerRide as (
+select Customer_ID, count(*) as ride_count, sum(Booking_Value) as revenue
+from silver_ola_ride_booking
+where Booking_Status = 'Completed'
+group by Customer_ID
+)
+select 
+case when ride_count = 1 then 'one_time' when ride_count between 2 and 5 then 'repeat (2-5)' else 'loyal (6+)' end as segment,
+count(*) as customers,
+sum(revenue) as total_revenue,
+cast(sum(revenue)*100.0/sum(sum(revenue)) over() as decimal(5,2)) as pct_of_revenue
+from customerRide
+group by case when ride_count = 1 then 'one_time' when ride_count between 2 and 5 then 'repeat (2-5)' else 'loyal (6+)' end 
+ORDER BY Total_Revenue DESC;
+
+
+
